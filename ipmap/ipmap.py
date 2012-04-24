@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 import math
 import struct
 from random import randint
+from hilbert import HilbertContainer
 
 def ip_strtoint(ipstr):
     """ Convert an IPv4 address in dotted-decimal to an integer. """
@@ -15,75 +16,25 @@ def ip_inttostr(ip):
     """ Convert an integer to an IPv4 address in dotted-decimal. """
     return '.'.join(map(lambda x: str(ord(x)), struct.pack('>L', ip)))
 
-def xy2d(side_length, x, y):
-    """ Find the distance of the point (x, y) along a Hilbert curve
-    which fills a square *side_length* units on a side. """
-    s = side_length / 2
-    d = 0
-    while( s > 0 ):
-        rx = 1 if (x & s) else 0
-        ry = 1 if (y & s) else 0
-        d += s * s * ((3 * rx) ^ ry)
-        if (ry == 0):
-            if (rx == 1):
-                x = s-1 - x
-                y = s-1 - y
-            (x, y) = (y, x)
-        s /= 2
-    return d
-
-def d2xy(side_length, d):
-    """ Find the coordinates (x, y) of a point some distance *d* along
-    a Hilbert curve which fills a square *side_length* units on a side. """
-    x = y = 0
-    s = 1
-    while( s < side_length ):
-        rx = 1 & (d/2)
-        ry = 1 & (d ^ rx)
-        if (ry == 0):
-            if (rx == 1):
-                x = s-1 - x
-                y = s-1 - y
-            (x, y) = (y, x)
-        x += s * rx
-        y += s * ry
-        d /= 4
-        s *= 2
-    return x, y
-
-
-class IPMap(object):
+class IPMap(HilbertContainer):
     """ Base class for IPMap objects. Puts IP/value pairs into buckets and generates
     a Hilbert curve mapping of buckets to x/y coordinates. """
 
-    def __init__(self, cidr, resolution=256):
-        """ Required argument *cidr* is the network mask in CIDR notation, e.g.
-        192.168.1.0/24. Optional argument *resolution* is the number of buckets to
-        sort the IPs into, and will be rounded up to the next highest square number """
+    def __init__(self, cidr, side_length=16):
+        """ Required argument *cidr* is the network mask in CIDR notation, e.g. 192.168.1.0/24.
+        """
+        super(IPMap, self).__init__(side_length, empty=0)
         network, length = cidr.split('/', 1)
         numips = 2**(32 - int(length))
         self.mask = numips - 1
         self.network = ip_strtoint(network) & ~self.mask
-        self.res= int(math.ceil(math.sqrt(resolution))**2)
-        self.chunk = (1.0*numips) / self.res #ips per unit
-        self.d = [0 for _ in range(0,self.res)]
+        self.chunk = (1.0*numips) / (self.side_length ** 2) #ips per unit
         self.maxval = 0
-        self.d2xy = lambda d: d2xy(self.res, d)
-        self.xy2d = lambda x, y: xy2d(self.res, x, y)
 
     def xy2ip(self, x, y):
         """ Given a set of x/y coordinates, return the lower bound of the IP
         addresses in the corresponding bucket """
         return ip_inttostr(int(self.xy2d(x, y)*self.chunk) | self.network)
-
-    def __getitem__(self, bucket):
-        """ Get the current value of a bucket """
-        return self.d[bucket]
-
-    def __setitem__(self, bucket, value):
-        """ Set the value of the bucket. Subclasses should override
-        *update_value* instead. """
-        self.d[bucket] = value
 
     def update_value(self, bucket, new):
         """ Given a bucket, update its contents with the new value. Override this
@@ -103,19 +54,12 @@ class IPMap(object):
         self.update_value(bucket, value)
         self.maxval = max(self[bucket], self.maxval)
 
-    def points(self):
-        """ Generator for iterating over the IPMap. Yields a 2-tuple of (x, y)
-        and the value at that point, in Hilbert-curve order (a la turtle) """
-        for bucket in range(0,self.res):
-            yield ( self.d2xy(bucket), self.d[bucket])
-
     def build(self):
         """ Build and return the whole map. Assumes there are no more values to
         add, though the base class version is not destructive. Override this to
         generate different kinds of maps. """
-        dim = int(math.sqrt(self.res))
-        table = [[None for _ in range(0, dim)] for _ in range(0, dim)]
-        for point, value in self.points():
+        table = [[None for _ in range(0, self.side_length)] for _ in range(0, self.side_length)]
+        for point, value in self:
             (x, y) = point
             table[x][y] = value
         return table
@@ -132,9 +76,8 @@ class IPMapHtmlTable(IPMap):
         IP for each bucket, and the class is the return value of
         self.get_class(self[bucket]). """
         depth_scale = self.maxval / (numclasses * 1.0)
-        dim = int(math.sqrt(self.res))
-        table = [[None for _ in range(0, dim)] for _ in range(0, dim)]
-        for point, value in self.points():
+        table = [[None for _ in range(0, self.side_length)] for _ in range(0, self.side_length)]
+        for point, value in self:
             (x, y) = point
             table[x][y] = "<td class={classtag}>{ip}</td>".format(
                     classtag = self.get_class(value),
@@ -210,15 +153,15 @@ class IPMapImage(IPMap):
         255, 126, 126,   255, 142, 142,   255, 159, 159,   255, 176, 176,
         255, 193, 193,   255, 209, 209,   255, 224, 224,   255, 237, 237,
         ]
-    def build(self, image_size=256, filename="IPMap.png"):
+    def build(self, image_size=256, out="IPMap.png", fmt="PNG"):
         """ Saves a square (*image_size* x *image_size*) image with values
         scaled to a 256-color heatmap. """
         depth_scale = self.maxval / (256.0)
-        linear_scale = image_size / math.sqrt(self.res)
+        linear_scale = 1.0 * image_size / self.side_length
         img = Image.new('P', (image_size, image_size))
         draw = ImageDraw.Draw(img)
         font = ImageFont.load_default()
-        for point, value in self.points():
+        for point, value in self:
             x, y = map(lambda x: x * linear_scale, point)
             ip_base = self.xy2ip(*point)
             draw.rectangle(
@@ -227,11 +170,11 @@ class IPMapImage(IPMap):
                     )
             draw.text((x, y), ip_base, font=font, fill=0)
         img.putpalette(IPMapImage.palette)
-        img.save(filename)
+        img.save(out, fmt)
 
 
 if __name__=='__main__':
-    heatmap = IPMapImage("192.168.1.0/24", 64)
+    heatmap = IPMapImage("192.168.1.0/24", 8)
     for i in range(0,1000):
         heatmap.add('192.168.1.'+str(randint(0,255)), 10)
     heatmap.build()
