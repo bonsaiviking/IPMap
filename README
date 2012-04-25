@@ -1,34 +1,130 @@
+Help on module hilbert:
+
+NAME
+    hilbert
+
+CLASSES
+    __builtin__.object
+        HilbertCurve
+            HilbertContainer
+    
+    class HilbertContainer(HilbertCurve)
+     |  A container that can be indexed along either the 1- or 2-dimensional aspects
+     |  of a Hilbert curve.
+     |  
+     |  Indexing by the 1-dimensional distance is done just like indexing into a list: curve[d]
+     |  
+     |  Indexing by 2-dimensional coordinates works the same way: curve[x,y]
+     |  
+     |  For example:
+     |  
+     |  >>> curve = HilbertContainer(8)
+     |  >>> curve[3] = "example"
+     |  >>> curve.d2xy(3)
+     |  (1, 0)
+     |  >>> curve[1,0]
+     |  'example'
+     |  
+     |  Method resolution order:
+     |      HilbertContainer
+     |      HilbertCurve
+     |      __builtin__.object
+     |  
+     |  Methods defined here:
+     |  
+     |  __getitem__(self, d)
+     |  
+     |  __init__(self, side_length, empty=None)
+     |  
+     |  __iter__(self)
+     |      Generator for iterating over the curve. Yields a 2-tuple of (x, y)
+     |      and the value at that point, in Hilbert-curve order (a la turtle).
+     |  
+     |  __setitem__(self, d, value)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from HilbertCurve:
+     |  
+     |  d2xy(self, d)
+     |      Find the coordinates (x, y) of a point some distance *d* along the curve.
+     |  
+     |  xy2d(self, x, y)
+     |      Find the distance of the point (x, y) along the curve.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from HilbertCurve:
+     |  
+     |  __dict__
+     |      dictionary for instance variables (if defined)
+     |  
+     |  __weakref__
+     |      list of weak references to the object (if defined)
+     |  
+     |  side_length
+    
+    class HilbertCurve(__builtin__.object)
+     |  Object-oriented interface to 2-dimensional Hilbert curves.
+     |  
+     |  A HilbertCurve object has one attribute, *side_length*, which is the square of
+     |  the order of the curve. A third-order Hilbert curve has a side length of 2**3, or 8.
+     |  The side length will be coerced into the next highest positive power of 2.
+     |  
+     |  Methods defined here:
+     |  
+     |  __init__(self, side_length)
+     |  
+     |  d2xy(self, d)
+     |      Find the coordinates (x, y) of a point some distance *d* along the curve.
+     |  
+     |  xy2d(self, x, y)
+     |      Find the distance of the point (x, y) along the curve.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors defined here:
+     |  
+     |  __dict__
+     |      dictionary for instance variables (if defined)
+     |  
+     |  __weakref__
+     |      list of weak references to the object (if defined)
+     |  
+     |  side_length
+
+FUNCTIONS
+    d2xy(side_length, d)
+        Find the coordinates (x, y) of a point some distance *d* along
+        a Hilbert curve which fills a square *side_length* units on a side.
+    
+    xy2d(side_length, x, y)
+        Find the distance of the point (x, y) along a Hilbert curve
+        which fills a square *side_length* units on a side.
+
+
 Help on module ipmap:
 
 NAME
     ipmap
 
-FILE
-    /home/miller/mywork/github/IPMap/ipmap.py
-
 CLASSES
-    __builtin__.object
+    hilbert.HilbertContainer(hilbert.HilbertCurve)
         IPMap
             IPMapHtmlTable
             IPMapImage
     
-    class IPMap(__builtin__.object)
+    class IPMap(hilbert.HilbertContainer)
      |  Base class for IPMap objects. Puts IP/value pairs into buckets and generates
      |  a Hilbert curve mapping of buckets to x/y coordinates.
      |  
+     |  Method resolution order:
+     |      IPMap
+     |      hilbert.HilbertContainer
+     |      hilbert.HilbertCurve
+     |      __builtin__.object
+     |  
      |  Methods defined here:
      |  
-     |  __getitem__(self, bucket)
-     |      Get the current value of a bucket
-     |  
-     |  __init__(self, cidr, resolution=256)
-     |      Required argument *cidr* is the network mask in CIDR notation, e.g.
-     |      192.168.1.0/24. Optional argument *resolution* is the number of buckets to
-     |      sort the IPs into, and will be rounded up to the next highest square number
-     |  
-     |  __setitem__(self, bucket, value)
-     |      Set the value of the bucket. Subclasses should override
-     |      *update_value* instead.
+     |  __init__(self, cidr, side_length=16)
+     |      Required argument *cidr* is the network mask in CIDR notation, e.g. 192.168.1.0/24.
      |  
      |  add(self, ip, value)
      |      Update the IPMap with a new IP and value
@@ -41,10 +137,6 @@ CLASSES
      |      add, though the base class version is not destructive. Override this to
      |      generate different kinds of maps.
      |  
-     |  points(self)
-     |      Generator for iterating over the IPMap. Yields a 2-tuple of (x, y)
-     |      and the value at that point, in Hilbert-curve order (a la turtle)
-     |  
      |  update_value(self, bucket, new)
      |      Given a bucket, update its contents with the new value. Override this
      |      method to use a different algorithm than addition (the default)
@@ -54,13 +146,35 @@ CLASSES
      |      addresses in the corresponding bucket
      |  
      |  ----------------------------------------------------------------------
-     |  Data descriptors defined here:
+     |  Methods inherited from hilbert.HilbertContainer:
+     |  
+     |  __getitem__(self, d)
+     |  
+     |  __iter__(self)
+     |      Generator for iterating over the curve. Yields a 2-tuple of (x, y)
+     |      and the value at that point, in Hilbert-curve order (a la turtle).
+     |  
+     |  __setitem__(self, d, value)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from hilbert.HilbertCurve:
+     |  
+     |  d2xy(self, d)
+     |      Find the coordinates (x, y) of a point some distance *d* along the curve.
+     |  
+     |  xy2d(self, x, y)
+     |      Find the distance of the point (x, y) along the curve.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from hilbert.HilbertCurve:
      |  
      |  __dict__
      |      dictionary for instance variables (if defined)
      |  
      |  __weakref__
      |      list of weak references to the object (if defined)
+     |  
+     |  side_length
     
     class IPMapHtmlTable(IPMap)
      |  IPMap as an HTML table
@@ -68,6 +182,8 @@ CLASSES
      |  Method resolution order:
      |      IPMapHtmlTable
      |      IPMap
+     |      hilbert.HilbertContainer
+     |      hilbert.HilbertCurve
      |      __builtin__.object
      |  
      |  Methods defined here:
@@ -84,27 +200,14 @@ CLASSES
      |  ----------------------------------------------------------------------
      |  Methods inherited from IPMap:
      |  
-     |  __getitem__(self, bucket)
-     |      Get the current value of a bucket
-     |  
-     |  __init__(self, cidr, resolution=256)
-     |      Required argument *cidr* is the network mask in CIDR notation, e.g.
-     |      192.168.1.0/24. Optional argument *resolution* is the number of buckets to
-     |      sort the IPs into, and will be rounded up to the next highest square number
-     |  
-     |  __setitem__(self, bucket, value)
-     |      Set the value of the bucket. Subclasses should override
-     |      *update_value* instead.
+     |  __init__(self, cidr, side_length=16)
+     |      Required argument *cidr* is the network mask in CIDR notation, e.g. 192.168.1.0/24.
      |  
      |  add(self, ip, value)
      |      Update the IPMap with a new IP and value
      |  
      |  bucket(self, ip)
      |      Get the bucket (0..resolution] that the IP belongs in
-     |  
-     |  points(self)
-     |      Generator for iterating over the IPMap. Yields a 2-tuple of (x, y)
-     |      and the value at that point, in Hilbert-curve order (a la turtle)
      |  
      |  update_value(self, bucket, new)
      |      Given a bucket, update its contents with the new value. Override this
@@ -115,13 +218,35 @@ CLASSES
      |      addresses in the corresponding bucket
      |  
      |  ----------------------------------------------------------------------
-     |  Data descriptors inherited from IPMap:
+     |  Methods inherited from hilbert.HilbertContainer:
+     |  
+     |  __getitem__(self, d)
+     |  
+     |  __iter__(self)
+     |      Generator for iterating over the curve. Yields a 2-tuple of (x, y)
+     |      and the value at that point, in Hilbert-curve order (a la turtle).
+     |  
+     |  __setitem__(self, d, value)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from hilbert.HilbertCurve:
+     |  
+     |  d2xy(self, d)
+     |      Find the coordinates (x, y) of a point some distance *d* along the curve.
+     |  
+     |  xy2d(self, x, y)
+     |      Find the distance of the point (x, y) along the curve.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from hilbert.HilbertCurve:
      |  
      |  __dict__
      |      dictionary for instance variables (if defined)
      |  
      |  __weakref__
      |      list of weak references to the object (if defined)
+     |  
+     |  side_length
     
     class IPMapImage(IPMap)
      |  IPMap as a heatmap image
@@ -129,11 +254,13 @@ CLASSES
      |  Method resolution order:
      |      IPMapImage
      |      IPMap
+     |      hilbert.HilbertContainer
+     |      hilbert.HilbertCurve
      |      __builtin__.object
      |  
      |  Methods defined here:
      |  
-     |  build(self, image_size=256, filename='IPMap.png')
+     |  build(self, image_size=256, out='IPMap.png', fmt='PNG')
      |      Saves a square (*image_size* x *image_size*) image with values
      |      scaled to a 256-color heatmap.
      |  
@@ -145,27 +272,14 @@ CLASSES
      |  ----------------------------------------------------------------------
      |  Methods inherited from IPMap:
      |  
-     |  __getitem__(self, bucket)
-     |      Get the current value of a bucket
-     |  
-     |  __init__(self, cidr, resolution=256)
-     |      Required argument *cidr* is the network mask in CIDR notation, e.g.
-     |      192.168.1.0/24. Optional argument *resolution* is the number of buckets to
-     |      sort the IPs into, and will be rounded up to the next highest square number
-     |  
-     |  __setitem__(self, bucket, value)
-     |      Set the value of the bucket. Subclasses should override
-     |      *update_value* instead.
+     |  __init__(self, cidr, side_length=16)
+     |      Required argument *cidr* is the network mask in CIDR notation, e.g. 192.168.1.0/24.
      |  
      |  add(self, ip, value)
      |      Update the IPMap with a new IP and value
      |  
      |  bucket(self, ip)
      |      Get the bucket (0..resolution] that the IP belongs in
-     |  
-     |  points(self)
-     |      Generator for iterating over the IPMap. Yields a 2-tuple of (x, y)
-     |      and the value at that point, in Hilbert-curve order (a la turtle)
      |  
      |  update_value(self, bucket, new)
      |      Given a bucket, update its contents with the new value. Override this
@@ -176,27 +290,41 @@ CLASSES
      |      addresses in the corresponding bucket
      |  
      |  ----------------------------------------------------------------------
-     |  Data descriptors inherited from IPMap:
+     |  Methods inherited from hilbert.HilbertContainer:
+     |  
+     |  __getitem__(self, d)
+     |  
+     |  __iter__(self)
+     |      Generator for iterating over the curve. Yields a 2-tuple of (x, y)
+     |      and the value at that point, in Hilbert-curve order (a la turtle).
+     |  
+     |  __setitem__(self, d, value)
+     |  
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from hilbert.HilbertCurve:
+     |  
+     |  d2xy(self, d)
+     |      Find the coordinates (x, y) of a point some distance *d* along the curve.
+     |  
+     |  xy2d(self, x, y)
+     |      Find the distance of the point (x, y) along the curve.
+     |  
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from hilbert.HilbertCurve:
      |  
      |  __dict__
      |      dictionary for instance variables (if defined)
      |  
      |  __weakref__
      |      list of weak references to the object (if defined)
+     |  
+     |  side_length
 
 FUNCTIONS
-    d2xy(side_length, d)
-        Find the coordinates (x, y) of a point some distance *d* along
-        a Hilbert curve which fills a square *side_length* units on a side.
-    
     ip_inttostr(ip)
         Convert an integer to an IPv4 address in dotted-decimal.
     
     ip_strtoint(ipstr)
         Convert an IPv4 address in dotted-decimal to an integer.
-    
-    xy2d(side_length, x, y)
-        Find the distance of the point (x, y) along a Hilbert curve
-        which fills a square *side_length* units on a side.
 
 
