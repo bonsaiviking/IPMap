@@ -1,28 +1,26 @@
 #!/usr/bin/env python
 
 from PIL import Image, ImageDraw, ImageFont
-import math
 import struct
 from random import randint
 from hilbert import HilbertContainer
 
 def ip_strtoint(ipstr):
-    """ Convert an IPv4 address in dotted-decimal to an integer. """
+    """Convert an IPv4 address in dotted-decimal to an integer."""
     return reduce(lambda x,y: (x<<8)+y,
             map(lambda x: int(x),
                 ipstr.split('.', 4)))
 
 def ip_inttostr(ip):
-    """ Convert an integer to an IPv4 address in dotted-decimal. """
+    """Convert an integer to an IPv4 address in dotted-decimal."""
     return '.'.join(map(lambda x: str(ord(x)), struct.pack('>L', ip)))
 
 class IPMap(HilbertContainer):
-    """ Base class for IPMap objects. Puts IP/value pairs into buckets and generates
-    a Hilbert curve mapping of buckets to x/y coordinates. """
+    """Base class for IPMap objects. Puts IP/value pairs into buckets and generates
+    a Hilbert curve mapping of buckets to x/y coordinates."""
 
     def __init__(self, cidr, side_length=16):
-        """ Required argument *cidr* is the network mask in CIDR notation, e.g. 192.168.1.0/24.
-        """
+        """Required argument *cidr* is the network mask in CIDR notation, e.g. 192.168.1.0/24."""
         super(IPMap, self).__init__(side_length, empty=0)
         network, length = cidr.split('/', 1)
         numips = 2**(32 - int(length))
@@ -32,32 +30,32 @@ class IPMap(HilbertContainer):
         self.maxval = 0
 
     def xy2ip(self, x, y):
-        """ Given a set of x/y coordinates, return the lower bound of the IP
-        addresses in the corresponding bucket """
+        """Given a set of x/y coordinates, return the lower bound of the IP
+        addresses in the corresponding bucket."""
         return ip_inttostr(int(self.xy2d(x, y)*self.chunk) | self.network)
 
     def update_value(self, bucket, new):
-        """ Given a bucket, update its contents with the new value. Override this
-        method to use a different algorithm than addition (the default) """
+        """Given a bucket, update its contents with the new value. Override this
+        method to use a different algorithm than addition (the default)."""
         self[bucket] += new
 
     def bucket(self, ip):
-        """ Get the bucket (0..resolution] that the IP belongs in """
+        """Get the bucket (0..resolution] that the IP belongs in."""
         num = ip_strtoint(ip)
         if self.network != num & ~self.mask:
             raise RuntimeError, "IP outside network: %s, %d" % (ip, self.network)
         return int((num & self.mask)/self.chunk)
 
     def add(self, ip, value):
-        """ Update the IPMap with a new IP and value """
+        """Update the IPMap with a new IP and value."""
         bucket = self.bucket(ip)
         self.update_value(bucket, value)
         self.maxval = max(self[bucket], self.maxval)
 
     def build(self):
-        """ Build and return the whole map. Assumes there are no more values to
+        """Build and return the whole map. Assumes there are no more values to
         add, though the base class version is not destructive. Override this to
-        generate different kinds of maps. """
+        generate different kinds of maps."""
         table = [[None for _ in range(0, self.side_length)] for _ in range(0, self.side_length)]
         for point, value in self:
             (x, y) = point
@@ -65,16 +63,16 @@ class IPMap(HilbertContainer):
         return table
 
 class IPMapHtmlTable(IPMap):
-    """ IPMap as an HTML table """
+    """IPMap as an HTML table."""
     def get_class(self, num):
-        """Override to enum classes"""
+        """Override to enum classes."""
         return num
 
     def build(self, numclasses=10):
-        """ Returns the map as HTML *<tr>* and *<td>* elements, suitable for
+        """Returns the map as HTML *<tr>* and *<td>* elements, suitable for
         including in the *<tbody>* element of a table. Text content is the base
         IP for each bucket, and the class is the return value of
-        self.get_class(self[bucket]). """
+        self.get_class(self[bucket])."""
         depth_scale = self.maxval / (numclasses * 1.0)
         table = [[None for _ in range(0, self.side_length)] for _ in range(0, self.side_length)]
         for point, value in self:
@@ -86,7 +84,7 @@ class IPMapHtmlTable(IPMap):
         return ''.join( map(lambda x: "<tr>{0}</tr>".format(''.join(x)), table) )
 
 class IPMapImage(IPMap):
-    """ IPMap as a heatmap image """
+    """IPMap as a heatmap image."""
     palette = [
         53,  52,  61,    51,  51,  61,    49,  50,  62,    48,  48,  63,
         46,  46,  64,    44,  44,  65,    42,  42,  65,    40,  40,  67,
@@ -154,8 +152,8 @@ class IPMapImage(IPMap):
         255, 193, 193,   255, 209, 209,   255, 224, 224,   255, 237, 237,
         ]
     def build(self, image_size=256, out="IPMap.png", fmt="PNG"):
-        """ Saves a square (*image_size* x *image_size*) image with values
-        scaled to a 256-color heatmap. """
+        """Saves a square (*image_size* x *image_size*) image with values
+        scaled to a 256-color heatmap."""
         depth_scale = self.maxval / (256.0)
         linear_scale = 1.0 * image_size / self.side_length
         img = Image.new('P', (image_size, image_size))
